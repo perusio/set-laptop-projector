@@ -1,0 +1,107 @@
+#!/bin/bash
+### set-projector --- A script that sets the output for a projector.
+
+### Copyright (C) 2011 António P. P. Almeida <appa@perusio.net>
+
+### Author: António P. P. Almeida <appa@perusio.net>
+
+### Permission is hereby granted, free of charge, to any person obtaining a
+### copy of this software and associated documentation files (the "Software"),
+### to deal in the Software without restriction, including without limitation
+### the rights to use, copy, modify, merge, publish, distribute, sublicense,
+### and/or sell copies of the Software, and to permit persons to whom the
+### Software is furnished to do so, subject to the following conditions:
+
+### The above copyright notice and this permission notice shall be included in
+### all copies or substantial portions of the Software.
+
+### Except as contained in this notice, the name(s) of the above copyright
+### holders shall not be used in advertising or otherwise to promote the sale,
+### use or other dealings in this Software without prior written authorization.
+
+### THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+### IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+### FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+### THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+### LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+### FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+### DEALINGS IN THE SOFTWARE.
+
+## The preferred LVDS resolution.
+LVDS_RESOLUTION="1366x768"
+
+########## Do not touch anything below this line unless you know what you're doing ##########
+SCRIPTNAME=${0##*/}
+
+## Disable the screensaver and power saving.
+XSET=$(which xset)
+[ -x $XSET ] || exit 0
+
+$XSET -dpms
+$XSET s off
+
+## The xrandr program.
+XRANDR=$(which xrandr)
+[ -x $XRANDR ] || exit 0
+
+
+function get_resolutions() {    
+    $XRANDR -q --verbose | awk -v output=$1 'BEGIN {skip=0} $1 == output {skip=1} (skip == 1) && ($1 ~ "[[:digit:]]+x[[:digit:]]+") {resolutions = sprintf("%s %s", resolutions, $1)} $0 !~ output {next} END {print resolutions}'
+ }
+
+## Reads the user chosen resolution and assigns it to
+## OUTPUT_RESOLUTION.
+function read_resolution() {
+    ## Get the resolutions into a Bash array.
+    resolutions=($(get_resolutions $1))
+
+    ## Get the resolution query string to be presented to the user.
+    resolutions_string=$(echo ${resolutions[@]} | awk 'BEGIN {print} {for(i=1; i<=NF; i++) {printf("\t[%d] %s\n", i-1, $i)}}')
+
+    ## Get the number of resolutions.
+    nbr_resolutions=${#resolutions[@]}
+
+    ## Present the user with the options.
+    cat <<EOF
+       Choose one of the following resolutions for $1
+       $resolutions_string
+
+EOF
+
+    ## Read the user reply.
+    read -p " Option [0-$((nbr_resolutions - 1))] (0 = default): " user_answer
+
+    ## Checking if the user_answer variable is assigned and taking the
+    ## necessary action according to the user answer.
+    case "${user_answer:=0}" in
+        [0-9]) 
+            OUTPUT_RESOLUTION=${resolutions[$user_answer]};; # get the resolution
+        *)
+            echo "Enter a number in the range [0-$nbr_resolutions]"
+            exit 1 ;; # signaling an error
+    esac
+}
+
+
+## Processing the options and doing the xrandr command.
+while getopts :dhl OPT; do
+    case $OPT in
+        d|+d)
+            read_resolution DisplayPort-0
+            $XRANDR --output LVDS $LVDS_RESOLUTION --output DisplayPort-0 $OUTPUT_RESOLUTION
+            ;;
+        h|+h)
+            read_resolution HDMI-0
+            $XRANDR --output LVDS $LVDS_RESOLUTION --output HDMI-0 $OUTPUT_RESOLUTION
+            ;;
+        l|+l)
+            read_resolution LVDS
+            $XRANDR --output LVDS $OUTPUT_RESOLUTION
+            ;;
+        *)
+            echo "Usage: $SCRIPTNAME -d[isplay port]h[dmi]l[vds]"
+            exit 2
+    esac
+done
+shift $(( OPTIND - 1 ))
+OPTIND=1
