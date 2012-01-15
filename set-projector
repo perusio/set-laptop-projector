@@ -30,7 +30,7 @@
 ## The preferred LVDS resolution.
 LVDS_RESOLUTION="1366x768"
 
-########## Do not touch anything below this line unless you know what you're doing ##########
+########## Do not touch anything below this line unless you know what you're doing ##########.
 SCRIPTNAME=${0##*/}
 
 ## Disable the screensaver and power saving.
@@ -44,10 +44,9 @@ $XSET s off
 XRANDR=$(which xrandr)
 [ -x $XRANDR ] || exit 0
 
-
-function get_resolutions() {    
+function get_resolutions() {
     $XRANDR -q --verbose | awk -v output=$1 'BEGIN {skip=0} $1 == output {skip=1} (skip == 1) && ($1 ~ "[[:digit:]]+x[[:digit:]]+") {resolutions = sprintf("%s %s", resolutions, $1)} $0 !~ output {next} END {print resolutions}'
- }
+}
 
 ## Reads the user chosen resolution and assigns it to
 ## OUTPUT_RESOLUTION.
@@ -74,7 +73,7 @@ EOF
     ## Checking if the user_answer variable is assigned and taking the
     ## necessary action according to the user answer.
     case "${user_answer:=0}" in
-        [0-9]) 
+        [0-9])
             OUTPUT_RESOLUTION=${resolutions[$user_answer]};; # get the resolution
         *)
             echo "Enter a number in the range [0-$nbr_resolutions]"
@@ -82,21 +81,20 @@ EOF
     esac
 }
 
-
 ## Processing the options and doing the xrandr command.
 while getopts :dhl OPT; do
     case $OPT in
         d|+d)
             read_resolution DisplayPort-0
-            $XRANDR --output LVDS $LVDS_RESOLUTION --output DisplayPort-0 $OUTPUT_RESOLUTION
+            $XRANDR --output LVDS --mode $LVDS_RESOLUTION --output DisplayPort-0 --mode $OUTPUT_RESOLUTION
             ;;
         h|+h)
             read_resolution HDMI-0
-            $XRANDR --output LVDS $LVDS_RESOLUTION --output HDMI-0 $OUTPUT_RESOLUTION
+            $XRANDR --output LVDS --mode $LVDS_RESOLUTION --output HDMI-0 --mode $OUTPUT_RESOLUTION
             ;;
         l|+l)
             read_resolution LVDS
-            $XRANDR --output LVDS $OUTPUT_RESOLUTION
+            $XRANDR --output LVDS --mode $OUTPUT_RESOLUTION
             ;;
         *)
             echo "Usage: $SCRIPTNAME -d[isplay port]h[dmi]l[vds]"
